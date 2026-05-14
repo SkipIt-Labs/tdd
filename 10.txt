@@ -1,0 +1,61 @@
+#include "defs.h"
+#include "iofn.h"
+#include <stdio.h>
+void systime_init();
+int main () {
+    unsigned long ts_now, ts_ante = 0;
+    char kbcode, kbhit = 0;
+    int df = 50; //duty factor : factorul de umplere al semnalului PWM
+    char buf[17];
+    initLCD_DLNF();
+    initLCD_DCBIDS();
+    systime_init();
+    PORTA = 0;
+    //initializari pentru timer 2
+    //       ---------- Mode fast pwm
+    //       |  |
+    TCCR2=0b01101110;
+    //        || |||
+    //        || -----p=256
+    //        --------- OC2 non inveting mode
+    //Setați pinul OC2 ca ieșire și apoi faceți OC2=’0’.
+    //Se va explica ulterior de ce:
+    setbit(DDRD,7);
+    clrbit(PORTD, 7);
+    while(1){
+        ts_now = get_systime();
+        if(ts_now - ts_ante >= KB_DELAY){ //citirile se fac din 50 ms in 50 ms
+            ts_ante = ts_now;
+            kbcode = getkey();
+            if(kbcode) khbit = 1;
+        }
+        if (kbhit){
+            gotoLC(1,1);
+            putchLCD(kbcode);
+        }
+        //PWM start
+        if( kbhit && (kbcode == 'C' || kbcode == 'D') ){
+            kbhit=0;
+            if(kbcode == 'C'){
+                df = df + 5;
+                if(df > 100) df = 100;
+            }
+            if(kbcode == 'D'){
+                df = df - 5;
+                if(df < 0) df = 0;
+            }
+            if(df == 0){
+                TCCR2 = 0b01001110;
+                clrbit(PORTD, 7);
+            }
+            else{
+		OCR2= (256 * df) / 100 - 1; 
+		TCCR2 = 0b01101110;
+            }
+            gotoLC(2,1);
+            sprintf(buf, "L=%3d%%", df);
+            putsLCD(buf);
+            //PWM end
+        }// end if( kbhit && (kbcode == 'C' || kbcode == 'D') )
+    } //end while(1)
+}//end main
