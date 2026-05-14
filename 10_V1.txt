@@ -1,0 +1,10 @@
+======== V1 ========
+fcycle = fCLK/p*N
+fCLK = 8Mhz = 8000000
+N = 256 (constant max 256 values)
+p= 1024 -> fcycle = 8000000 / 1024 * 256 = 30.5 HZ
+p = 256 -> fcycle = 8000000 / 256 * 256 = 122.07 HZ 
+p = 128 -> fcycle = 8000000 / 128 * 256 = 244 HZ Hz
+
+fcycle apartine [50 - 200] Hz => p = 256; => fcycle = 122.07
+-> Tcycle = 1/fcycle = 1/122 = 8.2
