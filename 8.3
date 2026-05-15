@@ -1,0 +1,156 @@
+#include "defs.h"
+#include "iofn.h"
+
+#define FMSG   0
+#define WAIT   1
+#define RING   2
+#define OPEN   3
+#define CODE1  4
+#define CODE2  5
+#define CODE3  6
+#define ERR    7
+
+void systime_init();
+unsigned long get_systime();
+
+int main(){
+   char code_prev = NOKEY;
+   char code_now  = NOKEY;
+   unsigned long ts_now = 0;
+   unsigned long ts_ante = 0; 
+   char kbcode, kbhit = 0;
+   
+   unsigned long ts_start_fsm = 0;
+   char cod[]="123"; //sau int cod = 123;
+   char buf[4];
+   char state = FMSG;
+   
+   initLCD_DLNF();
+   initLCD_DCBIDS();
+   systime_init();
+   
+   PORTA = 0x00;
+   clrbit(DDRD, 7); // pt cmd
+
+   clrbit(PORTD, 6); // pt LED
+   setbit(DDRD, 6); // pt UNLOCK
+   
+   while(1){
+      ts_now = get_systime();
+      if(ts_now - ts_ante >= KB_DELAY){ //citirile se fac din 50 ms in 50 ms
+         code_now  = kbscan();
+         
+         if( code_prev == NOKEY && code_now != NOKEY){
+            kbcode = code_now;
+            kbhit = 1;
+         }
+         code_prev = code_now;
+         ts_ante = ts_now;
+      }
+      
+      //SFSM
+      switch (state){
+         case FMSG:
+         clrLCD();
+         putsLCD("Suna la 1..8,");
+         gotoLC(2,1);
+         putsLCD("C pentru cod:");
+         state = WAIT;
+         break;
+         
+         case WAIT:
+            if(kbhit){
+               kbhit=0;
+               if ('C'==kbcode){
+                  clrLCD();
+                  putsLCD("Cod =");
+                  state = CODE1;
+               }
+               if (kbcode>='1' && kbcode <= '8'){
+                  clrLCD();
+                  putsLCD("Suna la ");
+                  putchLCD(kbcode);
+                  state = RING;
+                  ts_start_fsm = get_systime();
+               }
+            }
+         break;
+         
+         case RING:
+            if(!testbit(PIND, 7)) {
+               clrLCD();
+               putsLCD("Deschis!");
+               state = OPEN;
+               ts_start_fsm = get_systime();
+            }else if(get_systime() - ts_start_fsm >= 5000) {
+               state = FMSG;
+            }
+         break;
+                  
+         case CODE1:
+            if(kbhit){
+               kbhit=0;
+               if (kbcode>='0' && kbcode <= '9'){
+                  buf[0]=kbcode;
+                  putchLCD('*');
+                  state = CODE2;
+               }
+               else{
+                  state = FMSG;
+               }
+            }
+         break;
+         
+         case CODE2:
+            if(kbhit){
+               kbhit=0;
+               if (kbcode>='0' && kbcode <= '9'){
+                  buf[1]=kbcode;
+                  putchLCD('*');
+                  state = CODE3;
+               }
+               else{
+                  state = FMSG;
+               }
+            }
+         break;
+         
+         case CODE3:
+            if(kbhit){
+            kbhit=0;
+            if (kbcode>='0' && kbcode <= '9'){
+               buf[2]=kbcode;
+               if(buf[0] == cod[0] && buf[1] == cod[1] && buf[2] == cod[2]) {
+                  clrLCD();
+                  putsLCD("Deschis!");
+                  state = OPEN;
+               }
+               else {
+                  putsLCD("Cod invalid");
+                  state = ERR;
+               }
+               ts_start_fsm = get_systime();
+            }
+            else{
+               state = FMSG;
+            }
+         }
+         break;
+         
+         case OPEN:
+            setbit(PORTD, 6);
+            if(get_systime() - ts_start_fsm >= 5000) {
+               clrbit(PORTD, 6)
+               state = FMSG;
+            }
+         break;
+         
+         case ERR:
+            if(get_systime() - ts_start_fsm >= 5000) {
+               state = FMSG;
+            }
+         break;
+         
+      }//end switch
+   } //end while(1)
+}//end main
