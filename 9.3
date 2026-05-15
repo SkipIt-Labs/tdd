@@ -31,10 +31,12 @@ int main(){
   unsigned char ore = 0, minute = 0, secunde = 0;
   // TCCR2 setting is done EXACTLY as below. The exam requires this style.
   // Replace? with calculated values
-  // ????CTC mode
+  //       -----CTC mode
+  //       |  |
   TCCR2=0b00011110;
-  // ?? ????P=256
-  // ??????? OC2 Toggle Mode :)
+  //        || |||
+  //        || -----P=256
+  //        ----------- OC2 Toggle Mode :)
   OCR2=249;
   while(1){
      ts_now = get_systime();
@@ -46,7 +48,7 @@ int main(){
            kbhit = 1;
         }
         code_prev = code_now;
-        ts_prev = ts_now;
+        ts_ante = ts_now;
      }
      if (kbhit){
         kbhit = 0;
